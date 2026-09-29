@@ -1,0 +1,272 @@
+@page "/cliente"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@using System.ComponentModel.DataAnnotations
+
+<div class="container mt-4">
+    <h3 class="mb-4 text-primary">Administración de Clientes</h3>
+
+    <!-- Caja de Alerta de Éxito o de Diagnóstico de Errores -->
+    @if (!string.IsNullOrEmpty(mensajeAlerta))
+    {
+        <div class="alert @(mensajeAlerta.Contains("éxito") || mensajeAlerta.Contains("guardado") ? "alert-success" : "alert-danger") alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-info-circle-fill me-2"></i> @mensajeAlerta
+            <button type="button" class="btn-close" @onclick="() => mensajeAlerta = string.Empty"></button>
+        </div>
+    }
+
+    <!-- Barra de acciones -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-muted">Módulo de gestión conectado a Base de Datos</span>
+        <button class="btn btn-primary px-4 shadow-sm" @onclick="AbrirModalNuevo">Nuevo</button>
+    </div>
+
+    <!-- Tabla Principal de Clientes -->
+    <div class="table-responsive shadow-sm rounded">
+        <table class="table table-bordered table-striped align-middle mb-0">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th>CUI</th>
+                    <th>NIT</th>
+                    <th>Nombres</th>
+                    <th>Apellidos</th>
+                    <th>Dirección</th>
+                    <th>Teléfono</th>
+                    <th>Fecha Nacimiento</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (clientes == null)
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2 mb-0 text-muted">Conectando con la base de datos SQL...</p>
+                        </td>
+                    </tr>
+                }
+                else if (!clientes.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">No hay clientes registrados en la base de datos o la API devolvió una lista vacía.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var c in clientes)
+                    {
+                        <tr>
+                            <td class="text-center">@c.CUI</td>
+                            <td class="text-center">@c.NIT</td>
+                            <td>@c.Nombres</td>
+                            <td>@c.Apellidos</td>
+                            <td>@c.Direccion</td>
+                            <td class="text-center">@c.Telefono</td>
+                            <td class="text-center">@c.FechaNacimiento?.ToString("dd/MM/yyyy")</td>
+                            <td class="text-center">
+                                <button class="btn btn-warning btn-sm me-2 text-white" @onclick="() => AbrirModalEditar(c)">Editar</button>
+                                <button class="btn btn-danger btn-sm" @onclick="() => EliminarCliente(c.Id)">Eliminar</button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- VENTANA MODAL DE BOOTSTRAP -->
+@if (mostrarModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" role="dialog">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header @(clienteForm.Id == 0 ? "bg-primary text-white" : "bg-warning text-dark")">
+                    <h5 class="modal-title fw-bold">@(clienteForm.Id == 0 ? "Nuevo Cliente" : "Editar Cliente")</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModal"></button>
+                </div>
+                
+                <EditForm Model="@clienteForm" OnValidSubmit="GuardarCliente">
+                    <DataAnnotationsValidator />
+                    
+                    <div class="modal-body bg-light">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">CUI</label>
+                                <InputText class="form-control" @bind-Value="clienteForm.CUI" />
+                                <ValidationMessage For="@(() => clienteForm.CUI)" class="text-danger small" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">NIT</label>
+                                <InputText class="form-control" @bind-Value="clienteForm.NIT" />
+                                <ValidationMessage For="@(() => clienteForm.NIT)" class="text-danger small" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Nombres</label>
+                                <InputText class="form-control" @bind-Value="clienteForm.Nombres" />
+                                <ValidationMessage For="@(() => clienteForm.Nombres)" class="text-danger small" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Apellidos</label>
+                                <InputText class="form-control" @bind-Value="clienteForm.Apellidos" />
+                                <ValidationMessage For="@(() => clienteForm.Apellidos)" class="text-danger small" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Dirección</label>
+                                <InputText class="form-control" @bind-Value="clienteForm.Direccion" />
+                                <ValidationMessage For="@(() => clienteForm.Direccion)" class="text-danger small" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Teléfono</label>
+                                <InputText class="form-control" @bind-Value="clienteForm.Telefono" />
+                                <ValidationMessage For="@(() => clienteForm.Telefono)" class="text-danger small" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Fecha Nacimiento</label>
+                                <InputDate class="form-control" @bind-Value="clienteForm.FechaNacimiento" />
+                                <ValidationMessage For="@(() => clienteForm.FechaNacimiento)" class="text-danger small" />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer bg-white">
+                        <button type="button" class="btn btn-secondary" @onclick="CerrarModal">Cancelar</button>
+                        <button type="submit" class="btn @(clienteForm.Id == 0 ? "btn-success" : "btn-warning text-dark") px-4">
+                            @(clienteForm.Id == 0 ? "Registrar" : "Actualizar")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ClienteAPI> clientes = null!;
+    private ClienteAPI clienteForm = new();
+    private bool mostrarModal = false;
+    private string mensajeAlerta = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarClientes();
+    }
+
+    private async Task CargarClientes()
+    {
+        try
+        {
+            clientes = await Http.GetFromJsonAsync<List<ClienteAPI>>("api/clientes") ?? new();
+        }
+        catch (Exception ex)
+        {
+            mensajeAlerta = $"Error al leer clientes de la base de datos: {ex.Message}";
+            clientes = new List<ClienteAPI>(); 
+        }
+    }
+
+    private void AbrirModalNuevo()
+    {
+        clienteForm = new ClienteAPI { FechaNacimiento = DateTime.Today.AddYears(-18) };
+        mostrarModal = true;
+    }
+
+    private void AbrirModalEditar(ClienteAPI cliente)
+    {
+        clienteForm = new ClienteAPI
+        {
+            Id = cliente.Id,
+            CUI = cliente.CUI,
+            NIT = cliente.NIT,
+            Nombres = cliente.Nombres,
+            Apellidos = cliente.Apellidos,
+            Direccion = cliente.Direccion,
+            Telefono = cliente.Telefono,
+            FechaNacimiento = cliente.FechaNacimiento
+        };
+        mostrarModal = true;
+    }
+
+    private void CerrarModal()
+    {
+        mostrarModal = false;
+    }
+
+    private async Task GuardarCliente()
+    {
+        try
+        {
+            HttpResponseMessage response;
+            if (clienteForm.Id == 0)
+            {
+                response = await Http.PostAsJsonAsync("api/clientes", clienteForm);
+                if (response.IsSuccessStatusCode) 
+                {
+                    mensajeAlerta = "Cliente guardado con éxito en SQL Server.";
+                }
+                else
+                {
+                    var contenidoError = await response.Content.ReadAsStringAsync();
+                    mensajeAlerta = $"La API rechazó el registro. Código: {(int)response.StatusCode} ({response.ReasonPhrase}). Detalle técnico: {contenidoError}";
+                }
+            }
+            else
+            {
+                response = await Http.PutAsJsonAsync($"api/clientes/{clienteForm.Id}", clienteForm);
+                if (response.IsSuccessStatusCode)
+                {
+                    mensajeAlerta = "Cliente modificado con éxito.";
+                }
+else
+{
+mensajeAlerta = $"Error al modificar. Código del servidor: {(int)response.StatusCode}";
+}
+}
+}
+catch (Exception ex)
+{
+mensajeAlerta = $"Error crítico de red: {ex.Message}. Asegúrate de que tu proyecto API esté encendido en tu computadora.";
+}
+mostrarModal = false;
+await Task.Delay(500);
+await CargarClientes();
+StateHasChanged();
+}
+private async Task EliminarCliente(int id)
+{
+try
+{
+var response = await Http.DeleteAsync($"api/clientes/{id}");
+if (response.IsSuccessStatusCode)
+{
+mensajeAlerta = "Cliente eliminado de SQL Server.";
+await Task.Delay(300);
+await CargarClientes();
+StateHasChanged();
+}
+}
+catch (Exception ex)
+{
+Console.WriteLine($"Error al eliminar: {ex.Message}");
+}
+}
+public class ClienteAPI
+{
+public int Id { get; set; }
+[Required(ErrorMessage = "Requerido")]
+public string CUI { get; set; } = string.Empty;
+[Required(ErrorMessage = "Requerido")]
+public string NIT { get; set; } = string.Empty;
+[Required(ErrorMessage = "Requerido")]
+public string Nombres { get; set; } = string.Empty;
+[Required(ErrorMessage = "Requerido")]
+public string Apellidos { get; set; } = string.Empty;
+[Required(ErrorMessage = "Requerido")]
+public string Direccion { get; set; } = string.Empty;
+[Required(ErrorMessage = "Requerido")]
+public string Telefono { get; set; } = string.Empty;
+[Required(ErrorMessage = "Requerido")]
+public DateTime? FechaNacimiento { get; set; }
+}
+}
